@@ -5,22 +5,24 @@ import path from "path"
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  // 1. Muat env file berdasarkan 'mode' (development, production, dll.)
-  // npm run dev -> development, npm run build -> production
-  // process.cwd() adalah direktori akar proyek Anda
-  // .env.[mode].local (Prioritas tertinggi)
-  // .env.[mode]
-  // .env.local
-  // .env (Prioritas terendah)
-  const env = loadEnv(mode, process.cwd(), '');
+  /** * BAGIAN MODIFIKASI:
+   * Kita gabungkan process.env (Environment dari Vercel) 
+   * dengan loadEnv (Environment dari file .env lokal).
+   * Ini supaya Vercel bisa mendeteksi variabel yang kamu input di Dashboard.
+   */
+  const env = { ...process.env, ...loadEnv(mode, process.cwd(), '') };
 
+  /**
+   * TETAP SESUAI INSTRUKSI ASDOS:
+   * Melakukan pengecekan apakah VITE_CHECK ada.
+   * Jika tidak ada, build akan sengaja dihentikan (Error).
+   */
   const check = env.VITE_CHECK;
   if (!check) throw new Error("env is not detected");
-  console.log("Berhasil env:", check)
+  
+  console.log("Berhasil mendeteksi env:", check);
 
   return {
-    // Sekarang Anda bisa menggunakan variabel env di sini jika butuh, 
-    // misalnya untuk mengganti port secara dinamis:
     build: {
       sourcemap: true
     },
