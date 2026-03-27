@@ -11,8 +11,7 @@
     "prod:check-env": "bun --env-file=.env.production -e \"console.log(process.env.DATABASE_URL)\"",
     "prod:migrate": "bun --env-file=.env.production prisma/migrate.ts",
     "prod:seed": "bun --env-file=.env.production prisma/seed.ts",
-    "dev:turso": "bun --env-file=.env.production src/index.ts",
-    "prod:start": "bun --env-file=.env.production src/index.ts" 
+    "dev:turso": "bun --env-file=.env.production src/index.ts" 
   },
   "dependencies": {
     "@elysiajs/cookie": "^0.8.0",
