@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "bun run --watch src/index.ts",
+    "prod:start": "bun --env-file=.env.production src/index.ts",
     "build": "prisma generate && tsdown",
     "start": "bun dist/index.js",
     "postinstall": "prisma generate",
