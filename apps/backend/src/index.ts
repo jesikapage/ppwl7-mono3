@@ -9,42 +9,38 @@ import type { ApiResponse, HealthCheck, User } from "shared";
 
 // Simple in-memory token store (ganti dengan database/session untuk production)
 const tokenStore = new Map<string, { access_token: string; refresh_token?: string }>();
-const isBrowserRequest = (request: Request): boolean => {
-  const origin = request.headers.get("origin");
-  const referer = request.headers.get("referer");
-  const accept = request.headers.get("accept") ?? "";
-
-  // Browser biasanya kirim Accept: text/html
-  const acceptsHtml = accept.includes("text/html");
-
-  // Tidak ada origin & referer = direct browser access / curl
-  // Tapi curl tidak kirim Accept: text/html, browser kirim
-  return acceptsHtml && !origin && !referer;
-};
 
 const app = new Elysia()
-  .use(cors({ origin: ["http://localhost:5173", "http://localhost:5174"], credentials: true }))
+  .use(
+    cors({
+      origin: process.env.FRONTEND_URL || "http://localhost:5173",
+      credentials: true, // WAJIB untuk /auth/me yang mengecek session/cookie
+      allowedHeaders: ["Content-Type", "Authorization"]
+    })
+  )
   .use(swagger())
   .use(cookie())
   .onRequest(({ request, set }) => {
-    const origin = request.headers.get("origin");
-    const frontendUrl = process.env.FRONTEND_URL ?? "";
+    const url = new URL(request.url);
 
-    // Jika request dari FRONTEND_URL → langsung izinkan
-    if (origin && origin === frontendUrl) return;
-
-    // Jika akses dari browser langsung → wajib ada ?key=
-    if (isBrowserRequest(request)) {
-      const url = new URL(request.url);
+    if (url.pathname.startsWith("/users")) {
+      const origin = request.headers.get("origin");
+      const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:5173";
       const key = url.searchParams.get("key");
 
-      if (!key || key !== process.env.API_KEY) {
+      // 1. Izinkan jika datang dari Frontend resmi (AJAX/Fetch)
+      if (origin === frontendUrl) {
+        return;
+      }
+
+      // 2. Jika tidak dari Frontend, WAJIB cek API_KEY
+      // Ini akan menangkap akses langsung browser, Postman, cURL, dll.
+      if (key !== process.env.API_KEY) {
         set.status = 401;
-        return { message: "Unauthorized: missing or invalid key" };
+        return { message: "Unauthorized: Access denied without valid API Key" };
       }
     }
   })
-
   // Health check
   .get("/", (): ApiResponse<HealthCheck> => ({
     data: { status: "ok" },
@@ -93,6 +89,12 @@ const app = new Elysia()
     // Set cookie session
     session.value = sessionId;
     session.maxAge = 60 * 60 * 24; // 1 hari
+    session.path = "/";
+
+    // KONFIGURASI PRODUCTION
+    session.httpOnly = true;
+    session.secure = true;    // WAJIB: Cookie hanya dikirim lewat HTTPS
+    session.sameSite = "none"; // WAJIB: Agar cookie bisa dikirim antar domain berbeda
 
     // Redirect ke frontend
     return redirect(`${process.env.FRONTEND_URL}/classroom`);
@@ -109,7 +111,7 @@ const app = new Elysia()
 
   // Logout
   .post("/auth/logout", ({ cookie: { session } }) => {
-    if(!session) return { success: false };
+    if (!session) return { success: false };
 
     const sessionId = session?.value as string;
     if (sessionId) {
@@ -161,14 +163,16 @@ const app = new Elysia()
     }));
 
     return { data: result, message: "Course submissions retrieved" };
-  })
+  });
 
+// ! buat console log yang tidak tampil di production & pakai nilai dari ENV
 if (process.env.NODE_ENV != "production") {
   app.listen(3000);
   console.log(`🦊 Backend → http://localhost:3000`);
-  console.log(`🦊 TEST_URL: ${process.env.TEST_URL}`);
-  console.log(`🦊 DATABASE_URL: ${process.env.DATABASE_URL}`);
+  console.log(`🦊 FRONTEND_URL → ${process.env.FRONTEND_URL}`); // pembeda .env.development & .env.production
+  console.log(`🦊 DATABASE_URL: ${process.env.DATABASE_URL}`); // pembeda development & production
+  console.log(`🦊 GOOGLE_REDIRECT_URI: ${process.env.GOOGLE_REDIRECT_URI}`); // dari file .env
 }
 
-export type App = typeof app;
+// tambahkan export app agar Elysia dapat dibaca Vercel serverless.
 export default app;
