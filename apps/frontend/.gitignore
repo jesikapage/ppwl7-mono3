@@ -25,4 +25,4 @@ dist-ssr
 
 # dotenv environment variable files
 .env
-
+.env.production
