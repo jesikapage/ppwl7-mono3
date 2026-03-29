@@ -49,7 +49,7 @@ const app = new Elysia()
     "/",
     (): ApiResponse<HealthCheck> => ({
       data: { status: "ok" },
-      message: "server running!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+      message: "server running",
     }),
   )
 
